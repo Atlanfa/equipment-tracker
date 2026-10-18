@@ -1,0 +1,2064 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment QC Tracking</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <style>
+        :root {
+            --primary-bg: #ffffff; /* Light mode background */
+            --text-color: #333333; /* Light mode text */
+            --table-border: #ddd;
+            --table-header-bg: #f2f2f2;
+        }
+
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+        }
+
+        .dark-mode {
+            --primary-bg: #333333; /* Dark mode background */
+            --text-color: #ffffff; /* Dark mode text */
+            --table-border: #555;
+            --table-header-bg: #444;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-container label {
+            font-size: 0.9em;
+        }
+
+        .filter-container select,
+        .controls input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid var(--table-border);
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--table-header-bg);
+            cursor: pointer; /* Indicate sortable columns */
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-circle {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8em;
+            color: white;
+        }
+
+        .status-partial {
+            background-color: orange;
+        }
+
+        .status-passed {
+            background-color: green;
+        }
+
+        .status-failed {
+            background-color: red;
+        }
+
+        .highlight-yellow {
+            background-color: yellow;
+        }
+
+        .highlight-lightgreen {
+            background-color: lightgreen;
+        }
+
+        .notes {
+            font-style: italic;
+            color: #555;
+            min-height: 20px;
+        }
+
+        .note-item {
+            margin: 2px 0;
+            padding: 2px;
+        }
+
+        .note-input {
+            width: 100%;
+            margin: 5px 0;
+            padding: 5px;
+        }
+
+        .color-picker {
+            width: 25px;
+            height: 25px;
+            padding: 0;
+            border: none;
+            margin-right: 5px;
+        }
+
+        .add-note-btn {
+            padding: 2px 8px;
+            margin-left: 5px;
+        }
+
+        .editable {
+            min-width: 40px;
+            padding: 2px 4px;
+            border: 1px solid transparent;
+        }
+
+        .editable:hover {
+            border-color: #ccc;
+            background: rgba(0,0,0,0.05);
+        }
+
+        .editable:focus {
+            outline: none;
+            border-color: #007bff;
+            background: white;
+        }
+
+        .qc-passed-container {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .qc-passed-btn {
+            padding: 2px 6px;
+            font-size: 0.8em;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .qc-passed-btn:hover {
+            background-color: #e0e0e0;
+        }
+
+        .status-input {
+            width: 60px;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .status-input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .qc-passed-btn, .in-repair-btn, .qc-area-btn {
+            padding: 2px 6px;
+            font-size: 0.8em;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .qc-passed-btn:hover, .in-repair-btn:hover, .qc-area-btn:hover {
+            background-color: #e0e0e0;
+        }
+
+        /* Basic responsive adjustments */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .filter-container {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .filter-container select,
+            .controls input[type="text"] {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+
+            table {
+                overflow-x: auto; /* Enable horizontal scrolling for smaller screens */
+                display: block;
+            }
+        }
+
+        
+
+        .child-row {
+            background-color: #ffffff;
+        }
+
+        .toggle-button {
+            padding: 5px 10px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .toggle-button:hover {
+            background-color: #e0e0e0;
+        }
+
+        .nav-btn {
+            padding: 10px 20px;
+            margin: 5px 10px;
+            cursor: pointer;
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+
+        .nav-btn.active {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+
+        .nav-btn.active:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
+        }
+
+        .hidden-content {
+            display: none;
+        }
+
+        .nav-buttons-container {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: var(--table-header-bg);
+            border-radius: 8px;
+            border: 1px solid var(--table-border);
+        }
+
+        /* Quality Control Sign-off Styles */
+        .qc-signoff-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .signoff-form {
+            background: var(--table-header-bg);
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--table-border);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            box-sizing: border-box;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .submit-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .submit-btn:hover {
+            background-color: #218838;
+        }
+
+        .signoff-history {
+            background: var(--primary-bg);
+            border: 1px solid var(--table-border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .signoff-record {
+            background: var(--table-header-bg);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #007bff;
+        }
+
+        .signoff-record h4 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+
+        .signoff-record p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .signature-status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            background-color: #ffc107;
+            color: #856404;
+        }
+
+        .status-approved {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .status-rejected {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .equipment-info {
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+            display: none;
+        }
+
+        .dark-mode .equipment-info {
+            background: #495057;
+            color: white;
+        }
+
+        .completed-items-list {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            background: var(--primary-bg);
+        }
+
+        .item-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+            gap: 10px;
+        }
+
+        .item-checkbox:last-child {
+            border-bottom: none;
+        }
+
+        .item-checkbox input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .item-checkbox label {
+            margin: 0;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        .remove-item-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .remove-item-btn:hover {
+            background: #c82333;
+        }
+
+        .barcode-input {
+            font-family: monospace;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+
+        /* Dark mode toggle switch styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+        }
+
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+
+        input:focus + .slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        /* Warehouse Management Styles */
+        .warehouse-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .search-section {
+            background: var(--table-header-bg);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid var(--table-border);
+        }
+
+        .search-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+        }
+
+        .search-btn {
+            padding: 12px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        .search-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .results-section {
+            margin-bottom: 20px;
+        }
+
+        .search-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .equipment-card {
+            background: var(--primary-bg);
+            border: 1px solid var(--table-border);
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .equipment-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .equipment-card h4 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+
+        .equipment-card p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .equipment-card .barcode-info {
+            background: #f8f9fa;
+            padding: 5px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+
+        .dark-mode .equipment-card .barcode-info {
+            background: #495057;
+        }
+
+        .location-display {
+            background: var(--table-header-bg);
+            border: 1px solid var(--table-border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .location-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .equipment-details, .location-details {
+            background: var(--primary-bg);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--table-border);
+        }
+
+        .locations-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .location-item {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+
+        .dark-mode .location-item {
+            background: #495057;
+            color: white;
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .dark-mode .alert-success {
+            background-color: #155724;
+            color: #d4edda;
+        }
+
+        .dark-mode .alert-error {
+            background-color: #721c24;
+            color: #f8d7da;
+        }
+
+        @media (max-width: 768px) {
+            .search-input-group {
+                flex-direction: column;
+            }
+
+            .location-info {
+                grid-template-columns: 1fr;
+            }
+
+            .search-results {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Dark Mode Toggle (always visible) -->
+    <div style="position: fixed; top: 10px; right: 10px; z-index: 1000;">
+        <label class="switch">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="slider round"></span>
+        </label>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="nav-buttons-container">
+        <button id="qcTrackingBtn" class="nav-btn active">Equipment QC Tracking</button>
+        <button id="warehouseBtn" class="nav-btn">Warehouse Management</button>
+        <button id="qcSignoffBtn" class="nav-btn">Quality Control Sign-off</button>
+    </div>
+
+    <h1 id="pageTitle">Equipment QC Tracking</h1>
+    
+    <!-- Equipment QC Tracking Content -->
+    <div id="qcContent">
+        <div class="week-navigation" style="text-align: center; margin-bottom: 15px;">
+            <button data-offset="-1" style="margin-right: 10px;">Previous Week</button>
+            <span id="weekDisplay"></span>
+            <button data-offset="1" style="margin-left: 10px;">Next Week</button>
+        </div>
+
+    <div class="controls">
+        <input type="text" id="search" placeholder="Search Order, Equipment...">
+        <div class="filter-container">
+            <label for="day-filter">Day:</label>
+            <select id="day-filter">
+                <option value="">Select day</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+                <option value="Sunday">Sunday</option>
+            </select>
+
+            <label for="equipment-filter">Equipment:</label>
+            <select id="equipment-filter">
+
+                <option value="">Select equipment</option>
+                
+            </select>
+
+            
+        </div>
+    </div>
+
+  
+
+    <table>
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Date</th>
+                <th>Order Name</th>
+                <th>Equipment Name</th>
+                <th>Total Quantity</th>
+                
+            </tr>
+        </thead>
+        <tbody id="equipment-table-body">
+            {% for order_name, equipment_dict in grouped_totals.items %}
+    
+        {% for data, products in equipment_dict.items %}
+        <!-- remove parent row styles to make it look like normal row but saving functional -->
+
+        <tr class="parent-row" data-order="{{ order_name }}" data-day="{{ products.entries.0.day }}"> 
+        <td>{{ products.entries.0.day }}</td>
+        <td>{{ products.entries.0.date }}</td>
+        <td>{{ order_name }}</td>
+        <td>{{ data }}</td>
+        <td>{{ products.total_amount }}</td>
+        
+    {% endfor %}
+{% endfor %}
+        </tbody>
+    </table>
+
+    <div id="total-quantity-container" style="margin-top: 15px; text-align: right; font-weight: bold;">
+        Total Quantity: <span id="total-quantity">0</span>
+    </div>
+
+    <div id="notes-section" style="margin-top: 20px; padding: 20px; border: 1px solid #ddd;">
+        <h2>Notes</h2>
+        <div style="margin-bottom: 10px;">
+            <input type="color" id="highlight-color" value="#ffff00" style="margin-right: 10px;">
+            <input type="text" id="note-input" placeholder="Add a note..." style="width: 300px; padding: 5px;">
+            <button onclick="addNote()" style="margin-left: 10px; padding: 5px 10px;">Add Note</button>
+        </div>
+        <div id="notes-list" style="margin-top: 10px;">
+            {% for note in notes %}
+                <div style="margin-bottom: 5px; padding: 5px; background-color: {{ note.highlight_color }};">
+                    {{ note.created_at|date:"Y-m-d H:i" }}: {{ note.content }}
+                </div>
+            {% empty %}
+                <p>No notes available.</p>
+            {% endfor %}
+        </div>
+    </div>
+    </div>
+
+    <!-- Quality Control Sign-off Content (initially hidden) -->
+    <div id="qcSignoffContent" class="hidden-content">
+        <div class="qc-signoff-container">
+            <div class="signoff-form">
+                <h2>Quality Control Sign-off</h2>
+                
+                <form id="qcSignoffForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="equipmentBarcode">Equipment Barcode:</label>
+                            <input type="text" id="equipmentBarcode" placeholder="Scan or enter equipment barcode" required>
+                            <div id="equipmentInfo" class="equipment-info" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="orderNumber">Order Number:</label>
+                            <input type="text" id="orderNumber" placeholder="Auto-filled from barcode" readonly>
+                            <button type="button" id="editOrderBtn" style="margin-top: 5px; padding: 2px 8px; font-size: 12px;">Manual Entry</button>
+                        </div>
+                    </div>
+
+                    <!-- Order Items Section -->
+                    <div id="orderItemsSection" class="form-group" style="display: none;">
+                        <h4>Are all items from this order completed?</h4>
+                        <div class="form-row">
+                            <label>
+                                <input type="radio" name="orderCompletion" value="all" checked> Yes, all items completed
+                            </label>
+                            <label style="margin-left: 20px;">
+                                <input type="radio" name="orderCompletion" value="partial"> No, only specific items
+                            </label>
+                        </div>
+                        
+                        <div id="partialItemsSection" style="display: none; margin-top: 15px;">
+                            <label for="itemBarcodeEntry">Enter barcodes of completed items:</label>
+                            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                                <input type="text" id="itemBarcodeEntry" placeholder="Scan or enter item barcode">
+                                <button type="button" id="addItemBtn">Add Item</button>
+                            </div>
+                            <div id="completedItemsList" class="completed-items-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="inspectorName">Inspector Name:</label>
+                            <input type="text" id="inspectorName" placeholder="Enter your full name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="inspectionDate">Inspection Date:</label>
+                            <input type="date" id="inspectionDate" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="qcStatus">QC Status:</label>
+                            <select id="qcStatus" required>
+                                <option value="passed" selected>Passed</option>
+                                <option value="failed">Failed</option>
+                                <option value="partial">Partial Pass</option>
+                                <option value="pending">Pending Review</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="quantity">Quantity for Printing:</label>
+                            <input type="number" id="quantity" placeholder="Enter quantity to print" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="printerName">Select Name for Sticker:</label>
+                        <select id="printerName" required>
+                            <option value="">Select inspector name for sticker</option>
+                            <option value="John Doe">John Doe</option>
+                            <option value="Jane Smith">Jane Smith</option>
+                            <option value="Mike Johnson">Mike Johnson</option>
+                            <option value="Sarah Wilson">Sarah Wilson</option>
+                            <option value="Custom">Custom Name</option>
+                        </select>
+                        <input type="text" id="customPrinterName" placeholder="Enter custom name" style="margin-top: 5px; display: none;">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inspectionNotes">Inspection Notes:</label>
+                        <textarea id="inspectionNotes">All units passed visual inspection and functionality tests.</textarea>
+                        <div style="margin-top: 5px;">
+                            <label>
+                                <input type="checkbox" id="useDefaultNotes" checked> Use default inspection notes
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="correctiveActions">Corrective Actions (if applicable):</label>
+                        <textarea id="correctiveActions" placeholder="Describe any corrective actions taken or required..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="printSticker" checked> Print signature sticker?
+                        </label>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Submit Quality Control Sign-off</button>
+                </form>
+            </div>
+
+            <div class="signoff-history">
+                <h3>Recent QC Sign-offs</h3>
+                <div id="signoffHistory">
+                    <!-- Sign-off records will be populated here -->
+                    <div class="signoff-record">
+                        <h4>Sample Equipment - Order #12345</h4>
+                        <p><strong>Barcode:</strong> SMP001</p>
+                        <p><strong>Inspector:</strong> John Doe</p>
+                        <p><strong>Date:</strong> 2024-11-08</p>
+                        <p><strong>Status:</strong> <span class="signature-status status-approved">Passed</span></p>
+                        <p><strong>Quantity:</strong> 50 units</p>
+                        <p><strong>Order Completion:</strong> All items</p>
+                        <p><strong>Notes:</strong> All units passed visual inspection and functionality tests.</p>
+                        <p><strong>Printed for:</strong> John Doe</p>
+                        <p><strong>Signature Sticker:</strong> ✓ Printed</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warehouse Management Content (initially hidden) -->
+    <div id="warehouseContent" class="hidden-content">
+        <div class="warehouse-container">
+            <div class="search-section">
+                <h2>Equipment Location Finder</h2>
+                <div class="search-controls">
+                    <div class="search-input-group">
+                        <input type="text" id="equipmentSearch" placeholder="Enter equipment name or barcode..." class="search-input">
+                        <button id="searchBtn" class="search-btn">Search</button>
+                    </div>
+
+                    <div style="margin-top: 10px; padding: 10px; background: var(--table-header-bg); border-radius: 6px; font-size: 14px;">
+                        <strong>Instructions:</strong>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                            <li>Search by equipment name (e.g., "Laptop", "Monitor")</li>
+                            <li>Search by barcode (e.g., "ASL001LP", "ASL001MN", "LAP001")</li>
+                            <li>Click on equipment cards to view locations</li>
+                            <li>Most barcodes start with "ASL" followed by alphanumeric codes</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="results-section">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+
+            <!-- Equipment Location Display -->
+            <div id="locationDisplay" class="location-display hidden-content">
+                <h3>Equipment Location</h3>
+                <div class="location-info">
+                    <div class="equipment-details">
+                        <h4 id="equipmentName"></h4>
+                        <p><strong>Barcode:</strong> <span id="equipmentBarcode"></span></p>
+                        <p><strong>Description:</strong> <span id="equipmentDescription"></span></p>
+                    </div>
+                    <div class="location-details">
+                        <h4>Storage Locations</h4>
+                        <div id="locationsList" class="locations-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+    // Navigation functionality
+    document.addEventListener('DOMContentLoaded', () => {
+        const qcTrackingBtn = document.getElementById('qcTrackingBtn');
+        const warehouseBtn = document.getElementById('warehouseBtn');
+        const qcSignoffBtn = document.getElementById('qcSignoffBtn');
+        
+        const pageTitle = document.getElementById('pageTitle');
+        const qcContent = document.getElementById('qcContent');
+        const warehouseContent = document.getElementById('warehouseContent');
+        const qcSignoffContent = document.getElementById('qcSignoffContent');
+        
+        // Navigation state
+        let currentPage = 'qc-tracking';
+        
+        function showPage(page) {
+            // Hide all content
+            qcContent.classList.add('hidden-content');
+            warehouseContent.classList.add('hidden-content');
+            qcSignoffContent.classList.add('hidden-content');
+            
+            // Remove active class from all buttons
+            qcTrackingBtn.classList.remove('active');
+            warehouseBtn.classList.remove('active');
+            qcSignoffBtn.classList.remove('active');
+            
+            // Show selected page
+            switch(page) {
+                case 'qc-tracking':
+                    pageTitle.textContent = 'Equipment QC Tracking';
+                    qcContent.classList.remove('hidden-content');
+                    qcTrackingBtn.classList.add('active');
+                    break;
+                case 'warehouse':
+                    pageTitle.textContent = 'Warehouse Management';
+                    warehouseContent.classList.remove('hidden-content');
+                    warehouseBtn.classList.add('active');
+                    break;
+                case 'qc-signoff':
+                    pageTitle.textContent = 'Quality Control Sign-off';
+                    qcSignoffContent.classList.remove('hidden-content');
+                    qcSignoffBtn.classList.add('active');
+                    initializeQCSignoff();
+                    break;
+            }
+            
+            currentPage = page;
+        }
+        
+        // Event listeners for navigation
+        qcTrackingBtn.addEventListener('click', () => showPage('qc-tracking'));
+        warehouseBtn.addEventListener('click', () => showPage('warehouse'));
+        qcSignoffBtn.addEventListener('click', () => showPage('qc-signoff'));
+    });
+
+    // Warehouse Management Functions
+    function initializeWarehouseManagement() {
+        const equipmentSearch = document.getElementById('equipmentSearch');
+        const searchBtn = document.getElementById('searchBtn');
+        
+        // Search functionality
+        function searchEquipment() {
+            const searchTerm = equipmentSearch.value.trim();
+            if (!searchTerm) {
+                showAlert('Please enter an equipment name or barcode to search.', 'error');
+                return;
+            }
+
+            showAlert('Searching...', 'info');
+
+            // Make API call to search for equipment
+            fetch('/api/search-equipment/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken(),
+                },
+                body: JSON.stringify({
+                    search_term: searchTerm
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displaySearchResults(data.results);
+                } else {
+                    showAlert(data.error || 'Equipment not found.', 'error');
+                    clearResults();
+                }
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                showAlert('An error occurred while searching.', 'error');
+            });
+        }
+
+        // Display search results
+        function displaySearchResults(results) {
+            const searchResults = document.getElementById('searchResults');
+            searchResults.innerHTML = '';
+
+            if (results.length === 0) {
+                showAlert('No equipment found matching your search.', 'error');
+                return;
+            }
+
+            results.forEach(equipment => {
+                const card = document.createElement('div');
+                card.className = 'equipment-card';
+                
+                const barcodesList = equipment.barcodes.map(b => b.barcode).join(', ');
+                const barcodesDisplay = barcodesList || 'No barcodes assigned';
+                
+                card.innerHTML = `
+                    <h4>${equipment.name}</h4>
+                    <p><strong>Description:</strong> ${equipment.description || 'No description available'}</p>
+                    <div class="barcode-info">
+                        <strong>Barcodes:</strong> ${barcodesDisplay}
+                    </div>
+                    <p><strong>Storage Locations:</strong> ${equipment.locations.length} location(s)</p>
+                `;
+                
+                card.addEventListener('click', () => {
+                    displayEquipmentLocation(equipment);
+                });
+                
+                searchResults.appendChild(card);
+            });
+
+            // If only one result, show location automatically
+            if (results.length === 1) {
+                displayEquipmentLocation(results[0]);
+            }
+        }
+
+        // Display equipment location details
+        function displayEquipmentLocation(equipment) {
+            const locationDisplay = document.getElementById('locationDisplay');
+            const equipmentName = document.getElementById('equipmentName');
+            const equipmentBarcode = document.getElementById('equipmentBarcode');
+            const equipmentDescription = document.getElementById('equipmentDescription');
+            const locationsList = document.getElementById('locationsList');
+
+            // Populate equipment details
+            equipmentName.textContent = equipment.name;
+            equipmentBarcode.textContent = equipment.barcodes.map(b => b.barcode).join(', ');
+            equipmentDescription.textContent = equipment.description || 'No description available';
+
+            // Populate locations
+            locationsList.innerHTML = '';
+            if (equipment.locations.length === 0) {
+                locationsList.innerHTML = '<p>No storage locations assigned.</p>';
+            } else {
+                equipment.locations.forEach(location => {
+                    const locationItem = document.createElement('div');
+                    locationItem.className = 'location-item';
+                    locationItem.innerHTML = `
+                        <strong>Aisle:</strong> ${location.aile}<br>
+                        <strong>Shelf:</strong> ${location.shelf}<br>
+                        <strong>Row:</strong> ${location.row}
+                    `;
+                    locationsList.appendChild(locationItem);
+                });
+            }
+
+            locationDisplay.classList.remove('hidden-content');
+            showAlert('Equipment location found!', 'success');
+        }
+
+        // Utility functions
+        function showAlert(message, type) {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type === 'error' ? 'error' : 'success'}`;
+            alert.textContent = message;
+            
+            const searchSection = document.querySelector('.search-section');
+            searchSection.appendChild(alert);
+
+            // Auto-remove alert after 3 seconds
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        function clearResults() {
+            document.getElementById('searchResults').innerHTML = '';
+            document.getElementById('locationDisplay').classList.add('hidden-content');
+        }
+
+        // Event listeners
+        searchBtn.addEventListener('click', searchEquipment);
+        equipmentSearch.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchEquipment();
+            }
+        });
+
+        // Clear search when switching back from warehouse mode
+        document.getElementById('warehouseBtn').addEventListener('click', () => {
+            clearResults();
+            equipmentSearch.value = '';
+        });
+
+    }
+
+    // Quality Control Sign-off Functions
+    function initializeQCSignoff() {
+        setTodaysDate();
+        setupQCSignoffForm();
+        setupBarcodeHandling();
+        setupOrderItemsHandling();
+        setupPrinterNameHandling();
+        setupDefaultNotesHandling();
+    }
+
+    function setupBarcodeHandling() {
+        const barcodeInput = document.getElementById('equipmentBarcode');
+        const orderNumberInput = document.getElementById('orderNumber');
+        const equipmentInfo = document.getElementById('equipmentInfo');
+        const orderItemsSection = document.getElementById('orderItemsSection');
+        
+        barcodeInput.classList.add('barcode-input');
+        
+        barcodeInput.addEventListener('input', function() {
+            const barcode = this.value.trim();
+            if (barcode.length >= 3) { // Start searching after 3 characters
+                lookupEquipmentByBarcode(barcode);
+            } else {
+                equipmentInfo.style.display = 'none';
+                orderItemsSection.style.display = 'none';
+                orderNumberInput.value = '';
+            }
+        });
+
+        // Handle Enter key to focus on next field
+        barcodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('inspectorName').focus();
+            }
+        });
+    }
+
+    function lookupEquipmentByBarcode(barcode) {
+        const equipmentInfo = document.getElementById('equipmentInfo');
+        const orderNumberInput = document.getElementById('orderNumber');
+        const orderItemsSection = document.getElementById('orderItemsSection');
+        const quantityInput = document.getElementById('quantity');
+        
+        // Make API call to lookup equipment by barcode
+        fetch('/api/lookup-equipment/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify({
+                barcode: barcode
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                equipmentInfo.innerHTML = `
+                    <strong>Equipment:</strong> ${data.equipment_name}<br>
+                    <strong>Most Recent Order:</strong> ${data.order_number}<br>
+                    <strong>Total Quantity:</strong> ${data.total_quantity} units<br>
+                    <strong>Date:</strong> ${data.date}
+                `;
+                equipmentInfo.style.display = 'block';
+                orderNumberInput.value = data.order_number;
+                quantityInput.value = data.total_quantity;
+                orderItemsSection.style.display = 'block';
+            } else {
+                // Fallback to searching in the current table for matching equipment
+                searchInCurrentTable(barcode);
+            }
+        })
+        .catch(error => {
+            console.error('Equipment lookup error:', error);
+            // Fallback to searching in the current table
+            searchInCurrentTable(barcode);
+        });
+    }
+
+    function searchInCurrentTable(barcode) {
+        const equipmentInfo = document.getElementById('equipmentInfo');
+        const orderNumberInput = document.getElementById('orderNumber');
+        const orderItemsSection = document.getElementById('orderItemsSection');
+        const quantityInput = document.getElementById('quantity');
+        
+        // Search in the current table for matching equipment
+        const rows = document.querySelectorAll('#equipment-table-body tr');
+        let foundEquipment = null;
+        let mostRecentOrder = null;
+        let totalQuantity = 0;
+        
+        rows.forEach(row => {
+            const equipmentName = row.cells[3]?.textContent.trim();
+            const orderName = row.cells[2]?.textContent.trim();
+            const quantity = parseInt(row.cells[4]?.textContent.trim()) || 0;
+            
+            // Simple barcode matching - exact match required
+            if (equipmentName && equipmentName.toLowerCase() === barcode.toLowerCase()) {
+                if (!foundEquipment || !mostRecentOrder) {
+                    foundEquipment = equipmentName;
+                    mostRecentOrder = orderName;
+                    totalQuantity = quantity;
+                } else {
+                    // If we find another match, use the most recent or largest quantity
+                    if (quantity > totalQuantity) {
+                        mostRecentOrder = orderName;
+                        totalQuantity = quantity;
+                    }
+                }
+            }
+        });
+        
+        if (foundEquipment) {
+            equipmentInfo.innerHTML = `
+                <strong>Equipment:</strong> ${foundEquipment}<br>
+                <strong>Most Recent Order:</strong> ${mostRecentOrder}<br>
+                <strong>Total Quantity:</strong> ${totalQuantity} units
+            `;
+            equipmentInfo.style.display = 'block';
+            orderNumberInput.value = mostRecentOrder;
+            quantityInput.value = totalQuantity;
+            orderItemsSection.style.display = 'block';
+        } else {
+            equipmentInfo.innerHTML = '<span style="color: #dc3545;">Equipment not found in current data</span>';
+            equipmentInfo.style.display = 'block';
+            orderItemsSection.style.display = 'none';
+            orderNumberInput.value = '';
+            quantityInput.value = '';
+        }
+    }
+
+    function setupOrderItemsHandling() {
+        const orderCompletionRadios = document.querySelectorAll('input[name="orderCompletion"]');
+        const partialItemsSection = document.getElementById('partialItemsSection');
+        const itemBarcodeEntry = document.getElementById('itemBarcodeEntry');
+        const addItemBtn = document.getElementById('addItemBtn');
+        
+        orderCompletionRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'partial') {
+                    partialItemsSection.style.display = 'block';
+                } else {
+                    partialItemsSection.style.display = 'none';
+                    clearCompletedItems();
+                }
+            });
+        });
+        
+        addItemBtn.addEventListener('click', addCompletedItem);
+        itemBarcodeEntry.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addCompletedItem();
+            }
+        });
+    }
+
+    function addCompletedItem() {
+        const itemBarcodeEntry = document.getElementById('itemBarcodeEntry');
+        const completedItemsList = document.getElementById('completedItemsList');
+        const barcode = itemBarcodeEntry.value.trim();
+        
+        if (!barcode) {
+            showQCAlert('Please enter a barcode', 'error');
+            return;
+        }
+        
+        // Check if item already exists
+        const existingItems = completedItemsList.querySelectorAll('.item-checkbox');
+        for (let item of existingItems) {
+            if (item.dataset.barcode === barcode) {
+                showQCAlert('This item has already been added', 'error');
+                return;
+            }
+        }
+        
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'item-checkbox';
+        itemDiv.dataset.barcode = barcode;
+        
+        itemDiv.innerHTML = `
+            <input type="checkbox" id="item_${barcode}" checked>
+            <label for="item_${barcode}">Barcode: ${barcode}</label>
+            <button type="button" class="remove-item-btn" onclick="removeCompletedItem('${barcode}')">Remove</button>
+        `;
+        
+        completedItemsList.appendChild(itemDiv);
+        itemBarcodeEntry.value = '';
+        itemBarcodeEntry.focus();
+    }
+
+    function removeCompletedItem(barcode) {
+        const itemDiv = document.querySelector(`[data-barcode="${barcode}"]`);
+        if (itemDiv) {
+            itemDiv.remove();
+        }
+    }
+
+    function clearCompletedItems() {
+        document.getElementById('completedItemsList').innerHTML = '';
+    }
+
+    function setupPrinterNameHandling() {
+        const printerNameSelect = document.getElementById('printerName');
+        const customPrinterName = document.getElementById('customPrinterName');
+        
+        printerNameSelect.addEventListener('change', function() {
+            if (this.value === 'Custom') {
+                customPrinterName.style.display = 'block';
+                customPrinterName.required = true;
+                customPrinterName.focus();
+            } else {
+                customPrinterName.style.display = 'none';
+                customPrinterName.required = false;
+                customPrinterName.value = '';
+            }
+        });
+    }
+
+    function setupDefaultNotesHandling() {
+        const useDefaultNotes = document.getElementById('useDefaultNotes');
+        const inspectionNotes = document.getElementById('inspectionNotes');
+        const defaultNotes = 'All units passed visual inspection and functionality tests.';
+        
+        useDefaultNotes.addEventListener('change', function() {
+            if (this.checked) {
+                inspectionNotes.value = defaultNotes;
+                inspectionNotes.readOnly = true;
+                inspectionNotes.style.backgroundColor = '#f8f9fa';
+            } else {
+                inspectionNotes.readOnly = false;
+                inspectionNotes.style.backgroundColor = '';
+                inspectionNotes.focus();
+            }
+        });
+    }
+
+    function setupManualOrderEntry() {
+        const editOrderBtn = document.getElementById('editOrderBtn');
+        const orderNumberInput = document.getElementById('orderNumber');
+        
+        editOrderBtn.addEventListener('click', function() {
+            orderNumberInput.readOnly = false;
+            orderNumberInput.focus();
+            orderNumberInput.select();
+            this.textContent = 'Auto-fill';
+            
+            orderNumberInput.addEventListener('blur', function() {
+                editOrderBtn.textContent = 'Manual Entry';
+            }, { once: true });
+        });
+    }
+
+    function setTodaysDate() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('inspectionDate').value = today;
+    }
+
+    function setupQCSignoffForm() {
+        const form = document.getElementById('qcSignoffForm');
+        setupManualOrderEntry();
+        
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitQCSignoff();
+        });
+    }
+
+    function submitQCSignoff() {
+        const orderCompletion = document.querySelector('input[name="orderCompletion"]:checked').value;
+        const completedItems = [];
+        
+        if (orderCompletion === 'partial') {
+            const itemCheckboxes = document.querySelectorAll('#completedItemsList .item-checkbox');
+            itemCheckboxes.forEach(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (checkbox.checked) {
+                    completedItems.push(item.dataset.barcode);
+                }
+            });
+            
+            if (completedItems.length === 0) {
+                showQCAlert('Please add at least one completed item or select "All items completed"', 'error');
+                return;
+            }
+        }
+        
+        const printerNameSelect = document.getElementById('printerName');
+        const customPrinterName = document.getElementById('customPrinterName');
+        const finalPrinterName = printerNameSelect.value === 'Custom' ? customPrinterName.value : printerNameSelect.value;
+        
+        const formData = {
+            equipment_barcode: document.getElementById('equipmentBarcode').value,
+            order_number: document.getElementById('orderNumber').value,
+            inspector_name: document.getElementById('inspectorName').value,
+            inspection_date: document.getElementById('inspectionDate').value,
+            qc_status: document.getElementById('qcStatus').value,
+            quantity: document.getElementById('quantity').value,
+            inspection_notes: document.getElementById('inspectionNotes').value,
+            corrective_actions: document.getElementById('correctiveActions').value,
+            printer_name: finalPrinterName,
+            print_sticker: document.getElementById('printSticker').checked,
+            order_completion: orderCompletion,
+            completed_items: completedItems,
+            use_default_notes: document.getElementById('useDefaultNotes').checked
+        };
+
+        // Validate required fields
+        if (!formData.equipment_barcode || !formData.order_number || !formData.inspector_name || 
+            !formData.inspection_date || !formData.qc_status || !formData.quantity || !formData.printer_name) {
+            showQCAlert('Please fill in all required fields.', 'error');
+            return;
+        }
+
+        showQCAlert('Submitting QC sign-off...', 'info');
+
+        // Make API call to submit QC sign-off
+        fetch('/api/qc-signoff/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(),
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showQCAlert('QC sign-off submitted successfully!', 'success');
+                
+                if (formData.print_sticker) {
+                    showQCAlert('Preparing signature sticker for printing...', 'info');
+                    printSignatureSticker(data.signoff, finalPrinterName);
+                }
+                
+                clearQCForm();
+                addSignoffToHistory(data.signoff);
+            } else {
+                showQCAlert(data.error || 'Failed to submit QC sign-off.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('QC sign-off error:', error);
+            showQCAlert('An error occurred while submitting the QC sign-off.', 'error');
+        });
+    }
+
+    function printSignatureSticker(signoff, printerName) {
+        // This would integrate with your printer system
+        // For now, we'll simulate the printing process
+        const printData = {
+            equipment_name: signoff.equipment_name || 'Equipment',
+            order_number: signoff.order_number,
+            inspector: printerName,
+            date: signoff.inspection_date,
+            status: signoff.qc_status,
+            quantity: signoff.quantity
+        };
+        
+        // Log the print data for debugging
+        console.log('Printing sticker with data:', printData);
+        
+        // You would replace this with actual printer integration
+        setTimeout(() => {
+            showQCAlert(`Signature sticker sent to printer for ${printerName}`, 'success');
+        }, 1500);
+    }
+
+    function clearQCForm() {
+        document.getElementById('qcSignoffForm').reset();
+        setTodaysDate(); // Reset date to today
+        
+        // Reset QC status to "Passed"
+        document.getElementById('qcStatus').value = 'passed';
+        
+        // Reset inspection notes to default
+        document.getElementById('inspectionNotes').value = 'All units passed visual inspection and functionality tests.';
+        document.getElementById('useDefaultNotes').checked = true;
+        document.getElementById('inspectionNotes').readOnly = true;
+        document.getElementById('inspectionNotes').style.backgroundColor = '#f8f9fa';
+        
+        // Reset print sticker checkbox
+        document.getElementById('printSticker').checked = true;
+        
+        // Hide sections
+        document.getElementById('equipmentInfo').style.display = 'none';
+        document.getElementById('orderItemsSection').style.display = 'none';
+        document.getElementById('partialItemsSection').style.display = 'none';
+        
+        // Clear completed items
+        clearCompletedItems();
+        
+        // Reset order completion to "all"
+        document.querySelector('input[name="orderCompletion"][value="all"]').checked = true;
+        
+        // Reset order number to readonly
+        document.getElementById('orderNumber').readOnly = true;
+        document.getElementById('editOrderBtn').textContent = 'Manual Entry';
+        
+        // Reset custom printer name
+        document.getElementById('customPrinterName').style.display = 'none';
+        document.getElementById('customPrinterName').required = false;
+        
+        // Focus on barcode input
+        document.getElementById('equipmentBarcode').focus();
+    }
+
+    function addSignoffToHistory(signoff) {
+        const historyContainer = document.getElementById('signoffHistory');
+        
+        const signoffRecord = document.createElement('div');
+        signoffRecord.className = 'signoff-record';
+        
+        const statusClass = getStatusClass(signoff.qc_status);
+        const equipmentName = signoff.equipment_name || 'Equipment';
+        const completedItemsInfo = signoff.completed_items && signoff.completed_items.length > 0 
+            ? `<p><strong>Completed Items:</strong> ${signoff.completed_items.join(', ')}</p>` 
+            : '';
+        const printerInfo = signoff.printer_name ? `<p><strong>Printed for:</strong> ${signoff.printer_name}</p>` : '';
+        const stickerInfo = signoff.print_sticker ? '<p><strong>Signature Sticker:</strong> ✓ Printed</p>' : '';
+        
+        signoffRecord.innerHTML = `
+            <h4>${equipmentName} - Order #${signoff.order_number}</h4>
+            <p><strong>Barcode:</strong> ${signoff.equipment_barcode}</p>
+            <p><strong>Inspector:</strong> ${signoff.inspector_name}</p>
+            <p><strong>Date:</strong> ${signoff.inspection_date}</p>
+            <p><strong>Status:</strong> <span class="signature-status ${statusClass}">${signoff.qc_status.charAt(0).toUpperCase() + signoff.qc_status.slice(1)}</span></p>
+            <p><strong>Quantity:</strong> ${signoff.quantity} units</p>
+            <p><strong>Order Completion:</strong> ${signoff.order_completion === 'all' ? 'All items' : 'Partial items'}</p>
+            ${completedItemsInfo}
+            <p><strong>Notes:</strong> ${signoff.inspection_notes || 'No notes provided'}</p>
+            ${signoff.corrective_actions ? `<p><strong>Corrective Actions:</strong> ${signoff.corrective_actions}</p>` : ''}
+            ${printerInfo}
+            ${stickerInfo}
+        `;
+        
+        // Insert at the top of the history
+        historyContainer.insertBefore(signoffRecord, historyContainer.firstChild);
+    }
+
+    function getStatusClass(status) {
+        switch(status) {
+            case 'passed':
+                return 'status-approved';
+            case 'failed':
+                return 'status-rejected';
+            case 'pending':
+            case 'partial':
+                return 'status-pending';
+            default:
+                return 'status-pending';
+        }
+    }
+
+    function showQCAlert(message, type) {
+        // Remove existing alerts
+        const existingAlerts = document.querySelectorAll('.qc-signoff-container .alert');
+        existingAlerts.forEach(alert => alert.remove());
+
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type === 'error' ? 'error' : 'success'}`;
+        alert.textContent = message;
+        
+        const signoffForm = document.querySelector('.signoff-form');
+        signoffForm.insertBefore(alert, signoffForm.firstChild);
+
+        // Auto-remove alert after 4 seconds
+        setTimeout(() => {
+            alert.remove();
+        }, 4000);
+    }
+
+    
+
+    function initializeFilters() {
+        const searchInput = document.getElementById('search');
+        const dayFilter = document.getElementById('day-filter');
+        const equipmentFilter = document.getElementById('equipment-filter');
+
+        let currentWeekStart = null;
+        let currentWeekEnd = null;
+
+        function filterTable() {
+            const searchValue = searchInput.value.toLowerCase();
+            const dayValue = dayFilter.value;
+            const equipmentValue = equipmentFilter.value.toLowerCase();
+
+            const rows = document.querySelectorAll('#equipment-table-body tr');
+
+            rows.forEach(row => {
+                const day = row.getAttribute('data-day'); // Get the day from the data-day attribute
+                const dateCell = row.cells[1]?.textContent.trim(); // Get the date from the second column
+                const rowDate = new Date(dateCell);
+                const order = row.cells[2]?.textContent.toLowerCase();
+                const equipment = row.cells[3]?.textContent.toLowerCase();
+
+                const matchesSearch = !searchValue || order.includes(searchValue) || equipment.includes(searchValue);
+                const matchesDay = !dayValue || day === dayValue;
+                const matchesWeek = !currentWeekStart || (rowDate >= currentWeekStart && rowDate <= currentWeekEnd);
+                const matchesEquipment = !equipmentValue || equipment === equipmentValue;
+
+                if (matchesSearch && matchesDay && matchesWeek && matchesEquipment) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        function updateWeekFilter(startOfWeek, endOfWeek) {
+            currentWeekStart = startOfWeek;
+            currentWeekEnd = endOfWeek;
+            filterTable(); // Reapply the filter whenever the week changes
+        }
+
+        searchInput.addEventListener('input', filterTable);
+        dayFilter.addEventListener('change', filterTable);
+        equipmentFilter.addEventListener('change', filterTable);
+
+        return updateWeekFilter; // Return the function to update the week filter
+    }
+
+    // Define highlightMatchingEquipment in the global scope
+    function highlightMatchingEquipment() {
+        const notes = document.querySelectorAll('#notes-list div');
+        const rows = document.querySelectorAll('#equipment-table-body tr');
+
+        // Reset all row backgrounds
+        rows.forEach(row => {
+            const equipmentCell = row.cells[3]; // Equipment name column
+            equipmentCell.style.background = ''; // Reset background
+        });
+
+        // Create a map to store equipment and their associated colors
+        const equipmentColorsMap = new Map();
+
+        notes.forEach(note => {
+            const noteContent = note.textContent.toLowerCase();
+            const noteColor = note.style.backgroundColor;
+
+            rows.forEach(row => {
+                const equipmentCell = row.cells[3]; // Equipment name column
+                const equipmentName = equipmentCell.textContent.toLowerCase();
+
+                if (noteContent.includes(equipmentName)) {
+                    // Add the color to the equipment's list of colors
+                    if (!equipmentColorsMap.has(equipmentCell)) {
+                        equipmentColorsMap.set(equipmentCell, []);
+                    }
+                    equipmentColorsMap.get(equipmentCell).push(noteColor);
+                }
+            });
+        });
+
+        // Apply solid colors equally divided in the cell
+        equipmentColorsMap.forEach((colors, equipmentCell) => {
+            if (colors.length === 1) {
+                // Single color
+                equipmentCell.style.background = colors[0];
+            } else {
+                // Multiple colors - divide the cell equally
+                const colorStops = colors.map((color, index) => {
+                    const start = (index / colors.length) * 100;
+                    const end = ((index + 1) / colors.length) * 100;
+                    return `${color} ${start}%, ${color} ${end}%`;
+                }).join(', ');
+
+                equipmentCell.style.background = `linear-gradient(90deg, ${colorStops})`;
+            }
+        });
+    }
+
+    // Initialize notes highlight logic
+    function initializeNotesHighlight() {
+        highlightMatchingEquipment();
+
+        // Reapply highlight when a new note is added
+        document.getElementById('note-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                highlightMatchingEquipment();
+            }
+        });
+    }
+
+    function initializeCalendar(updateWeekFilter) {
+        let currentWeekOffset = 0;
+
+        function getStartOfWeek(date) {
+            const dayOfWeek = date.getDay(); // Get the current day of the week (0 = Sunday, 6 = Saturday)
+            const diff = date.getDate() - dayOfWeek; // Adjust to get Sunday as the start of the week
+            return new Date(date.setDate(diff));
+        }
+
+        function updateWeekDisplay() {
+            const today = new Date();
+            const startOfWeek = getStartOfWeek(new Date(today.setDate(today.getDate() + currentWeekOffset * 7)));
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+            // Format the dates as "YYYY-MM-DD"
+            const startOfWeekFormatted = startOfWeek.toISOString().split('T')[0];
+            const endOfWeekFormatted = endOfWeek.toISOString().split('T')[0];
+
+            // Update the week display
+            document.getElementById('weekDisplay').textContent = `${startOfWeekFormatted} - ${endOfWeekFormatted}`;
+
+            // Update the week filter and equipment filter
+            updateWeekFilter(startOfWeek, endOfWeek);
+            updateEquipmentFilter(startOfWeek, endOfWeek); // Update equipment dropdown
+            updateTotalQuantity();
+        }
+
+        document.querySelectorAll('.week-navigation button').forEach(button => {
+            button.addEventListener('click', function () {
+                currentWeekOffset += parseInt(this.dataset.offset, 10);
+                updateWeekDisplay();
+                updateTotalQuantity();
+            });
+        });
+
+        updateWeekDisplay();
+        
+        updateTotalQuantity();
+    }
+
+    
+
+    function addNote() {
+        const noteInput = document.getElementById('note-input');
+        const highlightColor = document.getElementById('highlight-color').value;
+        const notesList = document.getElementById('notes-list');
+
+        // Get the note content
+        const noteContent = noteInput.value.trim();
+
+        // Validate the input
+        if (!noteContent) {
+            alert('Please enter a note.');
+            return;
+        }
+
+        // Send the note to the server
+        fetch('/add-note/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken(), // Include CSRF token
+            },
+            body: JSON.stringify({
+                content: noteContent,
+                highlight_color: highlightColor,
+            }),
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to add note.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                // Create a new note element
+                const noteDiv = document.createElement('div');
+                noteDiv.style.backgroundColor = data.highlight_color;
+                noteDiv.style.marginBottom = '5px';
+                noteDiv.style.padding = '5px';
+                noteDiv.textContent = `${data.created_at}: ${data.content}`;
+
+                // Append the new note to the notes list
+                notesList.appendChild(noteDiv);
+
+                // Clear the input field
+                noteInput.value = '';
+
+                // Reapply the highlight logic
+                highlightMatchingEquipment();
+            })
+            .catch(error => {
+                console.error('Error adding note:', error);
+                alert('An error occurred while adding the note.');
+            });
+    }
+
+    
+        
+
+    // Helper function to get the CSRF token
+    function getCSRFToken() {
+        const cookieValue = document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrftoken='))
+            ?.split('=')[1];
+        return cookieValue || '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Hide all individual-entry rows by default
+        document.querySelectorAll('.individual-entry').forEach(row => {
+            row.style.display = 'none';
+        });
+
+        // Initialize dark mode
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+        if (isDarkMode) {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.checked = true;
+        }
+
+        darkModeToggle.addEventListener('change', function () {
+            if (this.checked) {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('darkMode', 'false');
+            }
+        });
+
+        // Initialize other functionalities
+        const updateWeekFilter = initializeFilters(); // Get the week filter updater function
+        initializeCalendar(updateWeekFilter); // Pass it to the calendar initializer
+        highlightMatchingEquipment();
+        updateTotalQuantity();
+        initializeWarehouseManagement(); // Initialize warehouse management
+        
+        // Initialize QC sign-off for when it's first accessed
+        window.initializeQCSignoff = initializeQCSignoff;
+    });
+
+    function updateEquipmentFilter(currentWeekStart, currentWeekEnd) {
+        const equipmentNames = new Set();
+        const rows = document.querySelectorAll('#equipment-table-body tr');
+
+        rows.forEach(row => {
+            const day = row.getAttribute('data-day');
+            const dateCell = row.cells[1]?.textContent.trim();
+            const rowDate = new Date(dateCell);
+            const equipmentName = row.cells[3]?.textContent.trim();
+
+            console.log(`Row Day: ${day}, Row Date: ${rowDate}, Equipment: ${equipmentName}`);
+
+            // Check if the row's date is within the current week
+            if (!isNaN(rowDate) && rowDate >= currentWeekStart && rowDate <= currentWeekEnd) {
+                if (equipmentName) {
+                    equipmentNames.add(equipmentName);
+                }
+            }
+        });
+
+        // Clear and repopulate the equipment filter dropdown
+        const equipmentFilter = document.getElementById('equipment-filter');
+        equipmentFilter.innerHTML = '<option value="">Select equipment</option>'; // Reset dropdown
+        equipmentNames.forEach(name => {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = name;
+            equipmentFilter.appendChild(option);
+        });
+    }
+
+    const equipmentNames = new Set();
+    const rows = document.querySelectorAll('#equipment-table-body tr');
+    rows.forEach(row => {
+        const equipmentName = row.cells[3]?.textContent.trim();
+        if (equipmentName) {
+            equipmentNames.add(equipmentName);
+        }
+    });
+
+    const equipmentFilter = document.getElementById('equipment-filter');
+    equipmentNames.forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        equipmentFilter.appendChild(option);
+    });
+
+    function sortTableByDays() {
+        const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const tableBody = document.getElementById('equipment-table-body');
+        const rows = Array.from(tableBody.querySelectorAll('tr'));
+
+        // Sort rows based on the day column
+        rows.sort((a, b) => {
+            const dayA = a.getAttribute('data-day');
+            const dayB = b.getAttribute('data-day');
+            return dayOrder.indexOf(dayA) - dayOrder.indexOf(dayB);
+        });
+
+        // Append sorted rows back to the table body
+        rows.forEach(row => tableBody.appendChild(row));
+    }
+
+    // Call the function to sort the table when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        sortTableByDays();
+    });
+
+    function sortTotalQuantityColumn() {
+        const tableBody = document.getElementById('equipment-table-body');
+        const rows = Array.from(tableBody.querySelectorAll('tr'));
+        let isAscending = tableBody.getAttribute('data-sort-order') === 'asc';
+
+        // Sort rows based on the "Total Quantity" column (5th column, index 4)
+        rows.sort((a, b) => {
+            const quantityA = parseInt(a.cells[4]?.textContent.trim(), 10) || 0;
+            const quantityB = parseInt(b.cells[4]?.textContent.trim(), 10) || 0;
+
+            return isAscending ? quantityA - quantityB : quantityB - quantityA;
+        });
+
+        // Append sorted rows back to the table body
+        rows.forEach(row => tableBody.appendChild(row));
+
+        // Toggle the sorting order
+        tableBody.setAttribute('data-sort-order', isAscending ? 'desc' : 'asc');
+    }
+
+    // Add a click event listener to the "Total Quantity" column header
+    document.addEventListener('DOMContentLoaded', () => {
+        const totalQuantityHeader = document.querySelector('th:nth-child(5)'); // 5th column header
+        totalQuantityHeader.style.cursor = 'pointer'; // Indicate it's clickable
+        totalQuantityHeader.addEventListener('click', sortTotalQuantityColumn);
+    });
+
+    function updateTotalQuantity() {
+        const rows = document.querySelectorAll('#equipment-table-body tr');
+        let totalQuantity = 0;
+
+        rows.forEach(row => {
+            // Get the "Total Quantity" column value (5th column, index 4)
+            const quantityCell = row.cells[4];
+            if (quantityCell && row.style.display !== 'none') { // Only include visible rows
+                const quantity = parseInt(quantityCell.textContent.trim(), 10);
+                if (!isNaN(quantity)) {
+                    totalQuantity += quantity;
+                }
+            }
+        });
+
+        // Update the total quantity label
+        document.getElementById('total-quantity').textContent = totalQuantity;
+    }
+
+    // Call the function to update the total quantity when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        
+
+        // Recalculate total quantity whenever filters are applied
+        const searchInput = document.getElementById('search');
+        const dayFilter = document.getElementById('day-filter');
+        const equipmentFilter = document.getElementById('equipment-filter');
+
+        searchInput.addEventListener('input', updateTotalQuantity);
+        dayFilter.addEventListener('change', updateTotalQuantity);
+        equipmentFilter.addEventListener('change', updateTotalQuantity);
+        updateTotalQuantity();
+    });
+    </script>
+</body>
+</html>

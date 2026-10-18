@@ -1,0 +1,530 @@
+
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipment QC Tracking</title>
+    <style>
+        :root {
+            --primary-bg: #ffffff; /* Light mode background */
+            --text-color: #333333; /* Light mode text */
+            --table-border: #ddd;
+            --table-header-bg: #f2f2f2;
+        }
+
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+        }
+
+        .dark-mode {
+            --primary-bg: #333333; /* Dark mode background */
+            --text-color: #ffffff; /* Dark mode text */
+            --table-border: #555;
+            --table-header-bg: #444;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-container label {
+            font-size: 0.9em;
+        }
+
+        .filter-container select,
+        .controls input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid var(--table-border);
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--table-header-bg);
+            cursor: pointer; /* Indicate sortable columns */
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-circle {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8em;
+            color: white;
+        }
+
+        .status-partial {
+            background-color: orange;
+        }
+
+        .status-passed {
+            background-color: green;
+        }
+
+        .status-failed {
+            background-color: red;
+        }
+
+        .highlight-yellow {
+            background-color: yellow;
+        }
+
+        .highlight-lightgreen {
+            background-color: lightgreen;
+        }
+
+        .notes {
+            font-style: italic;
+            color: #555;
+            min-height: 20px;
+        }
+
+        .note-item {
+            margin: 2px 0;
+            padding: 2px;
+        }
+
+        .note-input {
+            width: 100%;
+            margin: 5px 0;
+            padding: 5px;
+        }
+
+        .color-picker {
+            width: 25px;
+            height: 25px;
+            padding: 0;
+            border: none;
+            margin-right: 5px;
+        }
+
+        .add-note-btn {
+            padding: 2px 8px;
+            margin-left: 5px;
+        }
+
+        .editable {
+            min-width: 40px;
+            padding: 2px 4px;
+            border: 1px solid transparent;
+        }
+
+        .editable:hover {
+            border-color: #ccc;
+            background: rgba(0,0,0,0.05);
+        }
+
+        .editable:focus {
+            outline: none;
+            border-color: #007bff;
+            background: white;
+        }
+
+        /* Basic responsive adjustments */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .filter-container {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .filter-container select,
+            .controls input[type="text"] {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+
+            table {
+                overflow-x: auto; /* Enable horizontal scrolling for smaller screens */
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Equipment QC Tracking</h1>
+    
+    <div class="week-navigation" style="text-align: center; margin-bottom: 15px;">
+        <button onclick="changeWeek(-1)" style="margin-right: 10px;">Previous Week</button>
+        <span id="weekDisplay"></span>
+        <button onclick="changeWeek(1)" style="margin-left: 10px;">Next Week</button>
+    </div>
+
+    <div class="controls">
+        <label class="switch">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="slider round"></span>
+        </label>
+        <input type="text" id="search" placeholder="Search Order, Equipment, Notes...">
+        <div class="filter-container">
+            <label for="day-filter">Day:</label>
+            <select id="day-filter">
+                <option value="">All Days</option>
+                {% for day in days %}
+                    <option value="{{ day }}">{{ day }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="equipment-filter">Equipment:</label>
+            <select id="equipment-filter">
+                <option value="">All Equipment</option>
+                {% for equipment in equipment_list %}
+                    <option value="{{ equipment }}">{{ equipment }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="qc-filter">QC Status:</label>
+            <select id="qc-filter">
+                <option value="">All Status</option>
+                <option value="passed">Passed</option>
+                <option value="partial">Partial Pass</option>
+                <option value="failed">Failed</option>
+            </select>
+
+            <label for="repair-filter">Repair Status:</label>
+            <select id="repair-filter">
+                <option value="">All</option>
+                <option value="repair">In Repair</option>
+                <option value="not-repair">Not in Repair</option>
+            </select>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Day of the week</th>
+                <th onclick="sortTable(1)">Date</th>
+                <th onclick="sortTable(2)">Order name</th>
+                <th onclick="sortTable(3)">Equipment name</th>
+                <th>Amount of equipment</th>
+                <th>In QC Area</th>
+                <th>QC By</th>
+                <th>QC Passed</th>
+                <th>In Repair</th>
+            </tr>
+        </thead>
+        <tbody id="equipment-table-body">
+            {% for entry in equipment_entries %}
+            <tr data-day="{{ entry.day }}">
+                <td>{{ entry.day }}</td>
+                <td>{{ entry.date }}</td>
+                <td>{{ entry.order_name }}</td>
+                <td>{{ entry.equipment_name }}</td>
+                <td>{{ entry.amount }}</td>
+                <td><div class="status-indicator editable" contenteditable="true" data-type="qc-area">{{ entry.qc_area }}</div></td>
+                <td contenteditable="true" class="editable">{{ entry.qc_by }}</td>
+                <td><div class="status-indicator editable" contenteditable="true" data-type="qc-passed">{{ entry.qc_passed }}</div></td>
+                <td><div class="status-indicator editable" contenteditable="true" data-type="repair">{{ entry.in_repair }}</div></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div id="notes-section" style="margin-top: 20px; padding: 20px; border: 1px solid #ddd;">
+        <h2>Notes</h2>
+        <div style="margin-bottom: 10px;">
+            <input type="color" id="highlight-color" value="#ffff00" style="margin-right: 10px;">
+            <input type="text" id="note-input" placeholder="Add a note..." style="width: 300px; padding: 5px;">
+            <button onclick="addNote()" style="margin-left: 10px; padding: 5px 10px;">Add Note</button>
+        </div>
+        <div id="notes-list" style="margin-top: 10px;"></div>
+    </div>
+
+    <script>
+        // Week navigation
+        let currentWeekOffset = 0;
+        
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', { 
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        function updateWeekDisplay() {
+            const startDate = new Date('2025-04-30');
+            startDate.setDate(startDate.getDate() + (currentWeekOffset * 7));
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 6);
+            
+            document.getElementById('weekDisplay').textContent = 
+                `${formatDate(startDate)} - ${formatDate(endDate)}`;
+
+            // Update table visibility based on week
+            const rows = document.querySelectorAll('#equipment-table-body tr');
+            rows.forEach(row => {
+                const dateCell = row.cells[1].textContent;
+                const rowDate = new Date(dateCell);
+                const isInWeek = rowDate >= startDate && rowDate <= endDate;
+                row.style.display = isInWeek ? '' : 'none';
+            });
+        }
+
+        function changeWeek(offset) {
+            currentWeekOffset += offset;
+            updateWeekDisplay();
+        }
+
+        // Call on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateWeekDisplay();
+            populateEquipmentFilter();
+        });
+
+        // Populate equipment filter with unique entries
+        function populateEquipmentFilter() {
+            const equipmentFilter = document.getElementById('equipment-filter');
+            const rows = document.querySelectorAll('#equipment-table-body tr');
+            const uniqueEquipment = new Set();
+            
+            // Keep only the "All Equipment" option
+            equipmentFilter.innerHTML = '<option value="">All Equipment</option>';
+
+            rows.forEach(row => {
+                const equipment = row.cells[3].textContent.trim();
+                if (equipment !== '-') {
+                    uniqueEquipment.add(equipment);
+                }
+            });
+
+            Array.from(uniqueEquipment)
+                .sort()
+                .forEach(equipment => {
+                    const option = document.createElement('option');
+                    option.value = equipment;
+                    option.textContent = equipment;
+                    equipmentFilter.appendChild(option);
+                });
+        }
+
+        // Call the function when the page loads
+        document.addEventListener('DOMContentLoaded', populateEquipmentFilter);
+
+        function addNote() {
+            const noteInput = document.getElementById('note-input');
+            const colorPicker = document.getElementById('highlight-color');
+            const notesList = document.getElementById('notes-list');
+            const note = noteInput.value.trim();
+            const color = colorPicker.value;
+
+            if (note) {
+                // Create note element
+                const noteElement = document.createElement('div');
+                noteElement.style.marginBottom = '5px';
+                noteElement.style.padding = '5px';
+                noteElement.style.backgroundColor = '#f5f5f5';
+                noteElement.textContent = note;
+
+                // Add note to the list
+                notesList.appendChild(noteElement);
+
+                // Check for equipment matches and highlight
+                const words = note.toLowerCase().split(/[\s,]+/).filter(word => word.length > 0);
+                const equipmentCells = document.querySelectorAll('#equipment-table-body tr td:nth-child(4)');
+                
+                equipmentCells.forEach(cell => {
+                    const equipmentName = cell.textContent.trim().toLowerCase();
+                    if (words.some(word => word === equipmentName)) {
+                        cell.style.backgroundColor = color;
+                    }
+                });
+
+                // Clear input
+                noteInput.value = '';
+            }
+        }
+
+        // Add Enter key support for note input
+        document.getElementById('note-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addNote();
+            }
+        });
+        function sortTable(columnIndex) {
+            const table = document.querySelector('table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            let direction = 'asc';
+
+            // Check if the current column is already being sorted and reverse the direction
+            const currentSortColumn = table.dataset.sortColumn;
+            if (parseInt(currentSortColumn) === columnIndex) {
+                direction = table.dataset.sortDirection === 'asc' ? 'desc' : 'asc';
+            }
+            table.dataset.sortColumn = columnIndex;
+            table.dataset.sortDirection = direction;
+
+            const sortedRows = rows.sort((rowA, rowB) => {
+                const cellA = rowA.querySelectorAll('td')[columnIndex].textContent.trim().toLowerCase();
+                const cellB = rowB.querySelectorAll('td')[columnIndex].textContent.trim().toLowerCase();
+
+                if (direction === 'asc') {
+                    return cellA.localeCompare(cellB);
+                } else {
+                    return cellB.localeCompare(cellA);
+                }
+            });
+
+            // Remove existing rows and append the sorted rows
+            tbody.innerHTML = '';
+            tbody.append(...sortedRows);
+        }
+
+        function filterTable() {
+            const searchInput = document.getElementById('search').value.toLowerCase();
+            const dayFilter = document.getElementById('day-filter').value;
+            const equipmentFilter = document.getElementById('equipment-filter').value;
+            const qcFilter = document.getElementById('qc-filter').value;
+            const repairFilter = document.getElementById('repair-filter').value;
+            const rows = document.querySelectorAll('#equipment-table-body tr');
+
+            rows.forEach(row => {
+                const day = row.dataset.day;
+                const order = row.cells[2].textContent.toLowerCase();
+                const equipment = row.cells[3].textContent.trim().toLowerCase();
+                const qcPassedCell = row.cells[7];
+                const repairCell = row.cells[8];
+                
+                // Get QC status
+                let qcStatus = 'failed';
+                if (qcPassedCell.textContent === '-') {
+                    qcStatus = '-';
+                } else if (qcPassedCell.querySelector('.status-indicator')) {
+                    const [current, total] = qcPassedCell.textContent.split('/').map(Number);
+                    if (current === total) qcStatus = 'passed';
+                    else if (current > 0) qcStatus = 'partial';
+                }
+
+                // Get repair status
+                let isInRepair = '-';
+                if (repairCell.textContent !== '-') {
+                    const [current, total] = repairCell.textContent.split('/').map(Number);
+                    isInRepair = current > 0 ? 'repair' : 'not-repair';
+                }
+
+                const searchMatch = searchInput === '' || order.includes(searchInput) || equipment.includes(searchInput);
+                const dayMatch = dayFilter === '' || day === dayFilter;
+                const equipmentMatch = equipmentFilter === '' || (equipment !== '-' && equipment === equipmentFilter.toLowerCase());
+                const qcMatch = qcFilter === '' || (qcStatus !== '-' && qcStatus === qcFilter);
+                const repairMatch = repairFilter === '' || (isInRepair !== '-' && isInRepair === repairFilter);
+
+                if (searchMatch && dayMatch && equipmentMatch && qcMatch && repairMatch) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        // Event listeners for filtering
+        document.getElementById('search').addEventListener('input', filterTable);
+        document.getElementById('day-filter').addEventListener('change', filterTable);
+        document.getElementById('equipment-filter').addEventListener('change', filterTable);
+        document.getElementById('qc-filter').addEventListener('change', filterTable);
+        document.getElementById('repair-filter').addEventListener('change', filterTable);
+
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const body = document.body;
+
+        darkModeToggle.addEventListener('change', () => {
+            body.classList.toggle('dark-mode');
+        });
+
+        // Handle QC By field
+        document.querySelectorAll('td[contenteditable="true"]').forEach(cell => {
+            cell.addEventListener('input', function() {
+                if (this.parentElement.cells[6] === this) { // QC By column
+                    const selection = window.getSelection();
+                    const range = selection.getRangeAt(0);
+                    const cursorPosition = range.startOffset;
+                    
+                    let text = this.textContent.toUpperCase();
+                    if (text.length > 2) {
+                        text = text.substring(0, 2);
+                        this.textContent = text;
+                        
+                        // Restore cursor position
+                        range.setStart(this.firstChild || this, Math.min(cursorPosition, text.length));
+                        range.setEnd(this.firstChild || this, Math.min(cursorPosition, text.length));
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    }
+                }
+            });
+        });
+
+        // Handle editable cells
+        document.querySelectorAll('.editable').forEach(cell => {
+            cell.addEventListener('blur', function() {
+                // Only apply number formatting to status indicator cells
+                if (this.classList.contains('status-indicator')) {
+                    let text = this.textContent;
+                    // Ensure the format is "number/number"
+                    if (!/^\d+\/\d+$/.test(text)) {
+                        this.textContent = '0/0';
+                    }
+
+                    // Update status circles based on values
+                    const [current, total] = this.textContent.split('/').map(Number);
+                    let statusClass = 'status-failed';
+                    if (current === total) statusClass = 'status-passed';
+                    else if (current > 0) statusClass = 'status-partial';
+
+                    // Update styling
+                    this.className = `status-indicator editable ${statusClass}`;
+                }
+            });
+
+            cell.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.blur();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

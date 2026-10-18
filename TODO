@@ -1,0 +1,4 @@
+change the QC'd by to the dropdown list that takes data from new model "QC stuff"
+add "+ one", "- one" "all done" buttons to the "QC passed"
+change the behavior of "QC passed" so it allows to input only the first digit before the "/out of x"
+I have a csv file with order returns. I need to get data from it. column number 4 contains name of equipment, column number 3 contains amount of this equipment. column number 7 contains barcode for equipment. column number 6 contains return date in this format "Delivery Date:2025-05-05Return Date:2025-05-09 Delivery Via:CustomerReturn Via:Customer". I need to go through every row and if on the column 4 data in cell is equel to the name of equipment in db. read whole row and get data for order. create new barcoded equipment only if there are no existing one 
